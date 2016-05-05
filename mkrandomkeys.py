@@ -111,6 +111,25 @@ def pub_key_fmt(prefix, keyhx):
     # encode base58
     return b58encode(unhexlify(h_hashkey + cksum))
 
+def pub_key_fmt_C(prefix, keyhx):
+    # generate V1 Address format
+    # see: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
+    # hash key - sha256 then ripemd160
+    keyval = keyhx
+    keybin = int(keyhx,16)
+    if keyhx[:2] == '04':
+        keyval = ('03' if (keybin % 2) else '02') + keyhx[2:66]
+    elif (keyhx[:2] != '02') and (keyhx[:2] != '03'):
+        raise ValueError('input is not ECC point format')
+    print('keyval = ' + keyval)
+    h = RIPEMD.new(sha256(unhexlify(keyval)).digest())
+    # add header prefix
+    h_hashkey = prefix + hexlify(h.digest()).decode('utf-8')
+    # calc checksum
+    cksum = sha256(sha256(unhexlify(h_hashkey)).digest()).hexdigest()[:8]
+    # encode base58
+    return b58encode(unhexlify(h_hashkey + cksum))
+
 if __name__ == '__main__':
     # private key is a random number between 1 and n 
     # (where n is "order" of curve generator point G)
@@ -130,17 +149,17 @@ if __name__ == '__main__':
     
     #check that we can recover p from WIF
     rhx = priv_key_decode(wif_priv)
-    print('rxh, phx =', rhx, phx)
+    # print('rxh, phx =', rhx, phx)
     assert rhx == phx
     
     wif_priv_C = priv_key_fmt_C(prv_prefix, phx)
-    print("WIF privkey C = " + wif_priv_C)
+    print("WIF privkey Compressed = " + wif_priv_C)
     if p == 0x1111111111111111111111111111111111111111111111111111111111111111:
         assert wif_priv_C == 'KwntMbt59tTsj8xqpqYqRRWufyjGunvhSyeMo3NTYpFYzZbXJ5Hp'
     
     #check that we can recover p from WIF
     rhx = priv_key_decode_C(wif_priv_C)
-    print('rxh, phx =', rhx, phx)
+    # print('rxh, phx =', rhx, phx)
     assert rhx == phx
     
     print("PUBLIC KEY MATH : ")
@@ -152,9 +171,14 @@ if __name__ == '__main__':
     wif_pub = pub_key_fmt(pub_prefix, pbhx)
     print("WIF pubkey = " + wif_pub)
     if p == 0x18E14A7B6A307F426A94F8114701E7C8E774E7F9A47E2C2035DB29A206321725:
-        assert wif_pub == '16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM'# 
+        assert wif_pub == '16UwLL9Risc3QfPqBUvKofHmBQ7wMtjvM'
     if p == 0x1111111111111111111111111111111111111111111111111111111111111111:
-        assert wif_pub == '1MsHWS1BnwMc3tLE8G35UXsS58fKipzB7a'# 
+        assert wif_pub == '1MsHWS1BnwMc3tLE8G35UXsS58fKipzB7a'
+        
+    wif_pub_C = pub_key_fmt_C(pub_prefix, pbhx)
+    print("WIF pubkey Compressed = " + wif_pub_C)
+    if p == 0x1111111111111111111111111111111111111111111111111111111111111111:
+        assert wif_pub_C == '1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nK9'
         
     if False:
         for i in range(0,255):
